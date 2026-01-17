@@ -1,0 +1,391 @@
+<!-- templates/schedule_app/schedule_weekly.html -->
+{% extends 'schedule_app/base.html' %}
+{% load static %}
+{% load schedule_tags %}
+
+{% block title %}Weekly View - SOC Monitoring Schedule{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+<li class="breadcrumb-item active">Weekly View</li>
+{% endblock %}
+
+{% block page_title %}Weekly Schedule View{% endblock %}
+{% block page_subtitle %}Week of {{ week_start|date:"F j, Y" }} to {{ week_end|date:"F j, Y" }}{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group">
+    <a href="{% url 'schedule_weekly' %}?week={{ prev_week }}" class="btn btn-outline-primary">
+        <i class="bi bi-chevron-left"></i> Previous Week
+    </a>
+    <a href="{% url 'schedule_weekly' %}?week={{ today_week }}" class="btn btn-outline-primary">
+        <i class="bi bi-calendar-check"></i> Current Week
+    </a>
+    <a href="{% url 'schedule_weekly' %}?week={{ next_week }}" class="btn btn-outline-primary">
+        Next Week <i class="bi bi-chevron-right"></i>
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Week Navigation -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h5 class="mb-0">Week {{ week_number }} of {{ week_start|date:"Y" }}</h5>
+                <p class="text-muted mb-0">
+                    {{ week_start|date:"M j" }} - {{ week_end|date:"M j, Y" }}
+                </p>
+            </div>
+            <div>
+                <div class="btn-group" role="group">
+                    <a href="{% url 'schedule_list' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-list me-2"></i>List View
+                    </a>
+                    <a href="{% url 'schedule_calendar' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-calendar-week me-2"></i>Calendar
+                    </a>
+                    <a href="{% url 'schedule_monthly' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-calendar-month me-2"></i>Monthly
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Weekly Schedule -->
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-bordered weekly-schedule">
+                <thead>
+                    <tr>
+                        <th style="width: 15%">Time</th>
+                        {% for date in week_dates %}
+                        <th class="text-center {% if date|date:'Y-m-d' == today|date:'Y-m-d' %}table-primary{% endif %}" style="width: 17%">
+                            <div class="d-flex flex-column align-items-center">
+                                <strong>{{ date|date:"D" }}</strong>
+                                <small class="text-muted">{{ date|date:"M j" }}</small>
+                                {% if date|date:'Y-m-d' == today|date:'Y-m-d' %}
+                                <span class="badge bg-primary mt-1">Today</span>
+                                {% endif %}
+                            </div>
+                        </th>
+                        {% endfor %}
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Early Morning Row -->
+                    <tr>
+                        <td class="align-middle">
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-primary me-2">EM</span>
+                                <strong>Early Morning</strong>
+                            </div>
+                            <small class="text-muted">5:00 PM - 7:00 AM</small>
+                        </td>
+                        {% for date in week_dates %}
+                        <td class="text-center">
+                            {% with em_assignment=assignments_by_date|get_item:date|get_em_assignment %}
+                            {% if em_assignment %}
+                            <div class="assignment-card {% if em_assignment.analyst == request.analyst %}your-assignment{% endif %} 
+                                         {% if em_assignment.is_extended_window %}extended-assignment{% endif %}">
+                                <div class="assignment-analyst">
+                                    <strong>{{ em_assignment.analyst.name }}</strong>
+                                    {% if em_assignment.analyst == request.analyst %}
+                                    <span class="badge bg-info">You</span>
+                                    {% endif %}
+                                </div>
+                                <div class="assignment-time">
+                                    <small>{{ em_assignment.window_start|date:"g:i A" }} - {{ em_assignment.window_end|date:"g:i A" }}</small>
+                                </div>
+                                <div class="assignment-status">
+                                    <span class="badge bg-{{ em_assignment.status|lower }}">{{ em_assignment.status }}</span>
+                                </div>
+                                {% if em_assignment.is_extended_window %}
+                                <div class="assignment-flag">
+                                    <span class="badge bg-warning text-dark">Extended</span>
+                                </div>
+                                {% endif %}
+                                <div class="assignment-actions mt-2">
+                                    <a href="{% url 'assignment_detail' em_assignment.id %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="text-center py-4">
+                                <i class="bi bi-calendar-x text-muted"></i>
+                                <p class="text-muted small mt-2">No EM</p>
+                            </div>
+                            {% endif %}
+                            {% endwith %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    
+                    <!-- Daily Monitoring Row -->
+                    <tr>
+                        <td class="align-middle">
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-success me-2">DM</span>
+                                <strong>Daily Monitoring</strong>
+                            </div>
+                            <small class="text-muted">5:00 PM - 5:00 PM</small>
+                        </td>
+                        {% for date in week_dates %}
+                        <td class="text-center">
+                            {% with dm_assignment=assignments_by_date|get_item:date|get_dm_assignment %}
+                            {% if dm_assignment %}
+                            <div class="assignment-card {% if dm_assignment.analyst == request.analyst %}your-assignment{% endif %} 
+                                         {% if dm_assignment.is_extended_window %}extended-assignment{% endif %}">
+                                <div class="assignment-analyst">
+                                    <strong>{{ dm_assignment.analyst.name }}</strong>
+                                    {% if dm_assignment.analyst == request.analyst %}
+                                    <span class="badge bg-info">You</span>
+                                    {% endif %}
+                                </div>
+                                <div class="assignment-time">
+                                    <small>{{ dm_assignment.window_start|date:"g:i A" }} - {{ dm_assignment.window_end|date:"g:i A" }}</small>
+                                </div>
+                                <div class="assignment-status">
+                                    <span class="badge bg-{{ dm_assignment.status|lower }}">{{ dm_assignment.status }}</span>
+                                </div>
+                                {% if dm_assignment.is_extended_window %}
+                                <div class="assignment-flag">
+                                    <span class="badge bg-warning text-dark">Extended</span>
+                                </div>
+                                {% endif %}
+                                <div class="assignment-actions mt-2">
+                                    <a href="{% url 'assignment_detail' dm_assignment.id %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="text-center py-4">
+                                <i class="bi bi-calendar-x text-muted"></i>
+                                <p class="text-muted small mt-2">No DM</p>
+                            </div>
+                            {% endif %}
+                            {% endwith %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                    
+                    <!-- Notes Row -->
+                    <tr>
+                        <td class="align-middle">
+                            <strong><i class="bi bi-journal-text"></i> Notes</strong>
+                        </td>
+                        {% for date in week_dates %}
+                        <td>
+                            {% with em_assignment=assignments_by_date|get_item:date|get_em_assignment dm_assignment=assignments_by_date|get_item:date|get_dm_assignment %}
+                            {% if em_assignment.notes or dm_assignment.notes %}
+                            <div class="notes-section">
+                                {% if em_assignment.notes %}
+                                <div class="note-item">
+                                    <small class="text-primary">EM:</small>
+                                    <small>{{ em_assignment.notes|truncatechars:50 }}</small>
+                                </div>
+                                {% endif %}
+                                {% if dm_assignment.notes %}
+                                <div class="note-item">
+                                    <small class="text-success">DM:</small>
+                                    <small>{{ dm_assignment.notes|truncatechars:50 }}</small>
+                                </div>
+                                {% endif %}
+                            </div>
+                            {% else %}
+                            <small class="text-muted">No notes</small>
+                            {% endif %}
+                            {% endwith %}
+                        </td>
+                        {% endfor %}
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Week Summary -->
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Week Statistics</h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Total EM Assignments
+                        <span class="badge bg-primary rounded-pill">{{ week_em_count }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Total DM Assignments
+                        <span class="badge bg-success rounded-pill">{{ week_dm_count }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Extended Windows
+                        <span class="badge bg-warning rounded-pill">{{ week_extended_count }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Monday Duties
+                        <span class="badge bg-danger rounded-pill">{{ week_monday_count }}</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-people me-2"></i>Analyst Workload This Week</h6>
+            </div>
+            <div class="card-body">
+                {% for analyst, count in analyst_workload.items %}
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>{{ analyst }}</span>
+                        <span>{{ count }} assignments</span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar" role="progressbar" 
+                             style="width: {{ count|percentage:max_workload }}%"></div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Print/Export Options -->
+<div class="card mt-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h6 class="mb-0">Export Options</h6>
+                <p class="text-muted mb-0">Export this week's schedule for printing or sharing</p>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-outline-primary" onclick="window.print()">
+                    <i class="bi bi-printer me-2"></i>Print
+                </button>
+                <button class="btn btn-outline-success" id="exportPDF">
+                    <i class="bi bi-file-pdf me-2"></i>Export PDF
+                </button>
+                <button class="btn btn-outline-secondary" id="exportCSV">
+                    <i class="bi bi-file-spreadsheet me-2"></i>Export CSV
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.weekly-schedule {
+    background: white;
+}
+
+.weekly-schedule th {
+    background-color: #f8f9fa;
+    vertical-align: middle;
+}
+
+.assignment-card {
+    padding: 10px;
+    border-radius: 5px;
+    background: #f8f9fa;
+    margin-bottom: 5px;
+    border-left: 4px solid #dee2e6;
+}
+
+.assignment-card.your-assignment {
+    background: #e7f1ff;
+    border-left-color: #0d6efd;
+}
+
+.assignment-card.extended-assignment {
+    background: #fff3cd;
+    border-left-color: #ffc107;
+}
+
+.assignment-analyst {
+    font-weight: 600;
+    margin-bottom: 5px;
+}
+
+.assignment-time {
+    font-size: 0.8rem;
+    color: #6c757d;
+    margin-bottom: 5px;
+}
+
+.assignment-status .badge {
+    font-size: 0.7rem;
+    padding: 2px 6px;
+}
+
+.assignment-flag .badge {
+    font-size: 0.65rem;
+    padding: 1px 4px;
+}
+
+.notes-section {
+    max-height: 100px;
+    overflow-y: auto;
+}
+
+.note-item {
+    padding: 3px 0;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.note-item:last-child {
+    border-bottom: none;
+}
+
+@media print {
+    .navbar, .breadcrumb, .page-actions, .card-header, .btn-group, .footer {
+        display: none !important;
+    }
+    
+    .weekly-schedule {
+        font-size: 12px;
+    }
+    
+    .assignment-card {
+        page-break-inside: avoid;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Export PDF functionality
+    document.getElementById('exportPDF').addEventListener('click', function() {
+        alert('PDF export functionality would be implemented here');
+        // In a real implementation, this would call a view that generates PDF
+    });
+    
+    // Export CSV functionality
+    document.getElementById('exportCSV').addEventListener('click', function() {
+        // Generate CSV data
+        let csvContent = "data:text/csv;charset=utf-8,";
+        csvContent += "Date,Day,Monitoring Type,Analyst,Start Time,End Time,Status,Notes\n";
+        
+        // This would be populated with actual data from the server
+        alert('CSV export would download schedule data');
+    });
+});
+</script>
+{% endblock %}

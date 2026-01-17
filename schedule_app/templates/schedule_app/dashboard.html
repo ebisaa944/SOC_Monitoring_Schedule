@@ -1,0 +1,375 @@
+<!-- templates/schedule_app/dashboard.html -->
+{% extends 'schedule_app/base.html' %}
+{% load static %}
+
+
+{% block title %}Dashboard - SOC Monitoring Schedule{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item active">Dashboard</li>
+{% endblock %}
+
+{% block page_title %}Dashboard{% endblock %}
+{% block page_subtitle %}Welcome back, {% if analyst %}{{ analyst.name }}{% else %}{{ user.username }}{% endif %}! Today is {% now "F j, Y" %}{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group">
+    <button type="button" class="btn btn-outline-primary dropdown-toggle" data-bs-toggle="dropdown">
+        <i class="bi bi-calendar-plus"></i> Quick Actions
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+        <li><a class="dropdown-item" href="{% url 'leave_request_create' %}">
+            <i class="bi bi-calendar-minus"></i> Request Leave
+        </a></li>
+        <li><a class="dropdown-item" href="{% url 'report_submission_create' %}">
+            <i class="bi bi-file-earmark-text"></i> Submit Report
+        </a></li>
+        {% if analyst %}
+        <li><a class="dropdown-item" href="{% url 'my_schedule' %}">
+            <i class="bi bi-calendar-check"></i> View My Schedule
+        </a></li>
+        {% endif %}
+    </ul>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Stats Cards -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-subtitle text-muted">Today's Assignments</h6>
+                        <h2 class="card-title mb-0">{{ today_assignments.count }}</h2>
+                    </div>
+                    <div class="icon-circle bg-primary">
+                        <i class="bi bi-calendar-check text-white"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-subtitle text-muted">Pending Swaps</h6>
+                        <h2 class="card-title mb-0">{{ pending_swaps.count }}</h2>
+                    </div>
+                    <div class="icon-circle bg-warning">
+                        <i class="bi bi-arrow-left-right text-white"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-subtitle text-muted">Unread Notifications</h6>
+                        <h2 class="card-title mb-0">{{ unread_notifications.count }}</h2>
+                    </div>
+                    <div class="icon-circle bg-danger">
+                        <i class="bi bi-bell text-white"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3 mb-3">
+        <div class="card stat-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="card-subtitle text-muted">Monthly Reports</h6>
+                        <h2 class="card-title mb-0">{{ monthly_reports_count }}</h2>
+                    </div>
+                    <div class="icon-circle bg-success">
+                        <i class="bi bi-file-text text-white"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <!-- Left Column -->
+    <div class="col-lg-8">
+        <!-- Today's Schedule -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-calendar-day me-2"></i>Today's Schedule</h5>
+                <span class="badge bg-primary">{{ today|date:"l, F j, Y" }}</span>
+            </div>
+            <div class="card-body">
+                {% if today_assignments %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Monitoring Type</th>
+                                <th>Analyst</th>
+                                <th>Time Window</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for assignment in today_assignments %}
+                            <tr>
+                                <td>
+                                    <span class="badge {% if assignment.monitoring_type.code == 'EM' %}bg-primary{% else %}bg-success{% endif %}">
+                                        {{ assignment.monitoring_type.get_code_display }}
+                                    </span>
+                                    {% if assignment.is_extended_window %}
+                                    <span class="badge bg-warning text-dark ms-1">Extended</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <strong>{{ assignment.analyst.name }}</strong>
+                                    {% if assignment.analyst == analyst %}
+                                    <span class="badge bg-info">You</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small>{{ assignment.window_start|date:"M j, g:i A" }} to {{ assignment.window_end|date:"M j, g:i A" }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ assignment.status|lower }}">
+                                        {{ assignment.status }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <a href="{% url 'assignment_detail' assignment.id %}" class="btn btn-outline-primary" title="View Details">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                        {% if assignment.analyst == analyst %}
+                                        <button class="btn btn-outline-warning quick-swap-request" data-assignment-id="{{ assignment.id }}" title="Request Swap">
+                                            <i class="bi bi-arrow-left-right"></i>
+                                        </button>
+                                        <button class="btn btn-outline-success quick-report-submit" data-assignment-id="{{ assignment.id }}" title="Submit Report">
+                                            <i class="bi bi-file-earmark-text"></i>
+                                        </button>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-calendar-x display-4 text-muted mb-3"></i>
+                    <h5>No assignments scheduled for today</h5>
+                    <p class="text-muted">Enjoy your day!</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Upcoming Assignments -->
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-calendar-week me-2"></i>Upcoming Schedule (Next 7 Days)</h5>
+                <a href="{% url 'schedule_list' %}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body">
+                {% if upcoming_assignments %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Day</th>
+                                <th>Monitoring Type</th>
+                                <th>Analyst</th>
+                                <th>Time Window</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for assignment in upcoming_assignments %}
+                            <tr {% if assignment.analyst == analyst %}class="table-info"{% endif %}>
+                                <td>{{ assignment.date|date:"M j" }}</td>
+                                <td>{{ assignment.date|date:"D" }}</td>
+                                <td>
+                                    <span class="badge {% if assignment.monitoring_type.code == 'EM' %}bg-primary{% else %}bg-success{% endif %}">
+                                        {{ assignment.monitoring_type.get_code_display }}
+                                    </span>
+                                    {% if assignment.is_monday_assignment and assignment.is_extended_window %}
+                                    <span class="badge bg-danger ms-1">Monday Duty</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {{ assignment.analyst.name }}
+                                    {% if assignment.analyst == analyst %}
+                                    <span class="badge bg-info">You</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small>{{ assignment.window_start|date:"g:i A" }} to {{ assignment.window_end|date:"g:i A" }}</small>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-calendar2-week display-4 text-muted mb-3"></i>
+                    <h5>No upcoming assignments</h5>
+                    <p class="text-muted">Schedule will be generated automatically</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column -->
+    <div class="col-lg-4">
+        <!-- Quick Stats -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-graph-up me-2"></i>Quick Stats</h5>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Your EM Assignments This Month
+                        <span class="badge bg-primary rounded-pill">{{ analyst_em_count }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Your DM Assignments This Month
+                        <span class="badge bg-success rounded-pill">{{ analyst_dm_count }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Your Monday Duties This Month
+                        <span class="badge bg-danger rounded-pill">{{ analyst_monday_count }}</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Team Members Active
+                        <span class="badge bg-info rounded-pill">{{ active_analysts_count }}</span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Team Availability -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-people me-2"></i>Team Status</h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    {% for analyst in analysts %}
+                    <div class="list-group-item d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="avatar-circle {% if analyst.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                                {{ analyst.name|first }}
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="mb-0">{{ analyst.name }}
+                                {% if not analyst.is_active %}
+                                <span class="badge bg-secondary ms-1">Inactive</span>
+                                {% endif %}
+                            </h6>
+                            <small class="text-muted">
+                                {% with todays_assignment=analyst.assignments_today %}
+                                {% if todays_assignment %}
+                                On {{ todays_assignment.monitoring_type }} duty
+                                {% else %}
+                                No duty today
+                                {% endif %}
+                                {% endwith %}
+                            </small>
+                        </div>
+                        <div>
+                            <a href="{% url 'analyst_detail' analyst.id %}" class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <!-- System Announcements -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-megaphone me-2"></i>Announcements</h5>
+            </div>
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <h6><i class="bi bi-info-circle me-2"></i>System Update</h6>
+                    <p class="mb-0 small">SOC Monitoring Schedule v1.0 is now live! Report any issues to admin.</p>
+                </div>
+                <div class="alert alert-warning">
+                    <h6><i class="bi bi-exclamation-triangle me-2"></i>Monday Duty Reminder</h6>
+                    <p class="mb-0 small">Remember: Monday duties have extended time windows. Check your schedule.</p>
+                </div>
+                <div class="text-center">
+                    <a href="#" class="btn btn-sm btn-outline-secondary">View All Announcements</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.stat-card {
+    transition: transform 0.2s;
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.stat-card:hover {
+    transform: translateY(-5px);
+}
+
+.icon-circle {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+}
+
+.avatar-circle {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+}
+
+.badge.bg-scheduled { background-color: #6c757d; }
+.badge.bg-confirmed { background-color: #0d6efd; }
+.badge.bg-in_progress { background-color: #ffc107; color: #000; }
+.badge.bg-completed { background-color: #198754; }
+.badge.bg-cancelled { background-color: #dc3545; }
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/dashboard.js' %}"></script>
+{% endblock %}

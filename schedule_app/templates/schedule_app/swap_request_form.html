@@ -1,0 +1,305 @@
+<!-- templates/schedule_app/swap_request_form.html -->
+{% extends 'schedule_app/base.html' %}
+{% load static %}
+
+{% block title %}Request Shift Swap - SOC Monitoring Schedule{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+<li class="breadcrumb-item"><a href="{% url 'assignment_detail' assignment.id %}">Assignment Details</a></li>
+<li class="breadcrumb-item active">Request Swap</li>
+{% endblock %}
+
+{% block page_title %}Request Shift Swap{% endblock %}
+{% block page_subtitle %}Swap your {{ assignment.monitoring_type }} assignment on {{ assignment.date|date:"F j, Y" }}{% endblock %}
+
+{% block page_actions %}
+<a href="{% url 'assignment_detail' assignment.id %}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left me-2"></i>Back to Assignment
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Left Column - Assignment Details -->
+    <div class="col-lg-5">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-calendar-check me-2"></i>Current Assignment</h5>
+            </div>
+            <div class="card-body">
+                <div class="assignment-summary">
+                    <div class="d-flex align-items-center mb-3">
+                        <div class="avatar-circle bg-info me-3">
+                            {{ assignment.analyst.name|first }}
+                        </div>
+                        <div>
+                            <h6 class="mb-1">Assigned to: {{ assignment.analyst.name }}</h6>
+                            <small class="text-muted">You are requesting to swap this assignment</small>
+                        </div>
+                    </div>
+                    
+                    <div class="row">
+                        <div class="col-12 mb-3">
+                            <strong>Date:</strong> {{ assignment.date|date:"l, F j, Y" }}
+                            {% if assignment.is_monday_assignment %}
+                            <span class="badge bg-danger ms-2">Monday Duty</span>
+                            {% endif %}
+                        </div>
+                        <div class="col-12 mb-3">
+                            <strong>Monitoring Type:</strong>
+                            <span class="badge {% if assignment.monitoring_type.code == 'EM' %}bg-primary{% else %}bg-success{% endif %}">
+                                {{ assignment.monitoring_type.get_code_display }}
+                            </span>
+                            {% if assignment.is_extended_window %}
+                            <span class="badge bg-warning text-dark ms-2">Extended Window</span>
+                            {% endif %}
+                        </div>
+                        <div class="col-12 mb-3">
+                            <strong>Time Window:</strong><br>
+                            <small class="text-muted">
+                                {{ assignment.window_start|date:"M j, g:i A" }} to {{ assignment.window_end|date:"M j, g:i A" }}
+                            </small>
+                        </div>
+                        <div class="col-12">
+                            <strong>Duration:</strong> {{ assignment.duration_hours|floatformat:0 }} hours
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Swap Guidelines -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>Swap Guidelines</h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-group list-group-flush">
+                    <li class="list-group-item">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        Swaps must be approved by the receiving analyst
+                    </li>
+                    <li class="list-group-item">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        You cannot swap past assignments
+                    </li>
+                    <li class="list-group-item">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        The receiving analyst must be available on that date
+                    </li>
+                    <li class="list-group-item">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        Monday duties have special considerations
+                    </li>
+                    <li class="list-group-item">
+                        <i class="bi bi-check-circle text-success me-2"></i>
+                        Swaps may affect rotation patterns
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column - Swap Form -->
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-arrow-left-right me-2"></i>Request Swap</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" id="swapForm">
+                    {% csrf_token %}
+                    
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}
+                        {{ error }}
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    <!-- Requested Analyst -->
+                    <div class="mb-4">
+                        <label for="{{ form.requested_analyst.id_for_label }}" class="form-label">
+                            <i class="bi bi-person-plus me-1"></i>Request Swap With
+                        </label>
+                        {{ form.requested_analyst }}
+                        {% if form.requested_analyst.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.requested_analyst.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <small class="form-text text-muted">
+                            Select the analyst you want to swap with. Only available analysts are shown.
+                        </small>
+                    </div>
+                    
+                    <!-- Reason -->
+                    <div class="mb-4">
+                        <label for="{{ form.reason.id_for_label }}" class="form-label">
+                            <i class="bi bi-chat-text me-1"></i>Reason for Swap
+                        </label>
+                        {{ form.reason }}
+                        {% if form.reason.errors %}
+                        <div class="invalid-feedback d-block">
+                            {% for error in form.reason.errors %}
+                            {{ error }}
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <small class="form-text text-muted">
+                            Please provide a clear reason for requesting this swap.
+                        </small>
+                    </div>
+                    
+                    <!-- Availability Check -->
+                    <div class="card mb-4">
+                        <div class="card-body">
+                            <h6 class="card-title mb-3">Availability Check</h6>
+                            <div id="availabilityStatus" class="text-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Checking availability...</span>
+                                </div>
+                                <p class="mt-2">Checking analyst availability...</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Form Actions -->
+                    <div class="d-flex justify-content-between">
+                        <a href="{% url 'assignment_detail' assignment.id %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle me-2"></i>Cancel
+                        </a>
+                        <button type="submit" class="btn btn-primary" id="submitButton">
+                            <i class="bi bi-send me-2"></i>Send Swap Request
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Available Analysts Info -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-people me-2"></i>Available Analysts</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    {% for analyst in form.requested_analyst.field.queryset %}
+                    <div class="col-md-6 mb-3">
+                        <div class="d-flex align-items-center">
+                            <div class="avatar-circle-sm bg-info me-2">
+                                {{ analyst.name|first }}
+                            </div>
+                            <div>
+                                <strong>{{ analyst.name }}</strong><br>
+                                <small class="text-muted">{{ analyst.email }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="col-12">
+                        <div class="text-center py-3">
+                            <i class="bi bi-people display-4 text-muted mb-3"></i>
+                            <h6>No Available Analysts</h6>
+                            <p class="text-muted">All analysts are already assigned on {{ assignment.date|date:"F j, Y" }}</p>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.avatar-circle {
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+}
+
+.avatar-circle-sm {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 0.9rem;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const requestedAnalystSelect = document.getElementById('id_requested_analyst');
+    const availabilityStatus = document.getElementById('availabilityStatus');
+    const submitButton = document.getElementById('submitButton');
+    
+    function checkAvailability(analystId) {
+        if (!analystId) {
+            availabilityStatus.innerHTML = `
+                <div class="text-center">
+                    <i class="bi bi-question-circle display-4 text-muted mb-3"></i>
+                    <p>Select an analyst to check availability</p>
+                </div>
+            `;
+            submitButton.disabled = true;
+            return;
+        }
+        
+        // Simulate availability check
+        setTimeout(() => {
+            const isAvailable = Math.random() > 0.3; // 70% chance of being available
+            
+            if (isAvailable) {
+                availabilityStatus.innerHTML = `
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle me-2"></i>
+                        <strong>Available!</strong> This analyst appears to be available on {{ assignment.date|date:"F j, Y" }}
+                    </div>
+                `;
+                submitButton.disabled = false;
+            } else {
+                availabilityStatus.innerHTML = `
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>May be unavailable.</strong> This analyst might have scheduling conflicts.
+                    </div>
+                `;
+                submitButton.disabled = false;
+            }
+        }, 1000);
+    }
+    
+    // Initial check
+    checkAvailability(requestedAnalystSelect.value);
+    
+    // Check on change
+    requestedAnalystSelect.addEventListener('change', function() {
+        checkAvailability(this.value);
+    });
+    
+    // Form submission confirmation
+    document.getElementById('swapForm').addEventListener('submit', function(e) {
+        if (!confirm('Send swap request to the selected analyst?')) {
+            e.preventDefault();
+        }
+    });
+});
+</script>
+{% endblock %}

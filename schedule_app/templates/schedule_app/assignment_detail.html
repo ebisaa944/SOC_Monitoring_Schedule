@@ -1,0 +1,449 @@
+<!-- templates/schedule_app/assignment_detail.html -->
+{% extends 'schedule_app/base.html' %}
+{% load static %}
+
+{% block title %}Assignment Details - SOC Monitoring Schedule{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+<li class="breadcrumb-item"><a href="{% url 'schedule_list' %}">Schedule</a></li>
+<li class="breadcrumb-item active">Assignment Details</li>
+{% endblock %}
+
+{% block page_title %}Assignment Details{% endblock %}
+{% block page_subtitle %}{{ assignment.date|date:"l, F j, Y" }} - {{ assignment.monitoring_type.get_code_display }}{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group">
+    {% if user.is_staff %}
+    <a href="{% url 'update_assignment' assignment.id %}" class="btn btn-outline-secondary">
+        <i class="bi bi-pencil me-2"></i>Edit
+    </a>
+    {% endif %}
+    {% if assignment.analyst == request.analyst and assignment.date >= today %}
+    <a href="{% url 'swap_request_create' assignment.id %}" class="btn btn-outline-warning">
+        <i class="bi bi-arrow-left-right me-2"></i>Request Swap
+    </a>
+    {% endif %}
+    <button type="button" class="btn btn-outline-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown">
+        <span class="visually-hidden">Toggle Dropdown</span>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+        <li><a class="dropdown-item" href="#" onclick="window.print()">
+            <i class="bi bi-printer me-2"></i>Print
+        </a></li>
+        <li><a class="dropdown-item" href="#" id="copyAssignmentLink">
+            <i class="bi bi-clipboard me-2"></i>Copy Link
+        </a></li>
+        {% if user.is_staff %}
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item text-danger" href="{% url 'delete_assignment' assignment.id %}">
+            <i class="bi bi-trash me-2"></i>Delete
+        </a></li>
+        {% endif %}
+    </ul>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Left Column - Assignment Details -->
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Assignment Information</h5>
+                <span class="badge {% if assignment.monitoring_type.code == 'EM' %}bg-primary{% else %}bg-success{% endif %} fs-6">
+                    {{ assignment.monitoring_type.get_code_display }}
+                </span>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-4">
+                            <h6><i class="bi bi-calendar-date me-2"></i>Date & Day</h6>
+                            <p class="fs-5">
+                                {{ assignment.date|date:"l, F j, Y" }}
+                                {% if assignment.is_monday_assignment %}
+                                <span class="badge bg-danger ms-2">Monday Duty</span>
+                                {% endif %}
+                                {% if assignment.date|date:"Y-m-d" == today|date:"Y-m-d" %}
+                                <span class="badge bg-primary ms-2">Today</span>
+                                {% endif %}
+                            </p>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h6><i class="bi bi-person me-2"></i>Assigned Analyst</h6>
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-circle-lg bg-info me-3">
+                                    {{ assignment.analyst.name|first }}
+                                </div>
+                                <div>
+                                    <h5 class="mb-1">{{ assignment.analyst.name }}</h5>
+                                    <p class="text-muted mb-0">
+                                        <i class="bi bi-envelope me-1"></i>{{ assignment.analyst.email }}
+                                        <br>
+                                        <i class="bi bi-telephone me-1"></i>{{ assignment.analyst.phone }}
+                                    </p>
+                                    {% if assignment.analyst == request.analyst %}
+                                    <span class="badge bg-info mt-2">This is your assignment</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="mb-4">
+                            <h6><i class="bi bi-clock me-2"></i>Time Window</h6>
+                            <div class="time-window-card 
+                                {% if assignment.is_extended_window %}extended-window{% endif %}">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span class="fw-bold">Start</span>
+                                    <span class="fw-bold">End</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div class="text-center">
+                                        <h4 class="text-primary mb-0">{{ assignment.window_start|date:"g:i A" }}</h4>
+                                        <small class="text-muted">{{ assignment.window_start|date:"M j, Y" }}</small>
+                                    </div>
+                                    <div class="mx-3">
+                                        <i class="bi bi-arrow-right display-6 text-muted"></i>
+                                    </div>
+                                    <div class="text-center">
+                                        <h4 class="text-success mb-0">{{ assignment.window_end|date:"g:i A" }}</h4>
+                                        <small class="text-muted">{{ assignment.window_end|date:"M j, Y" }}</small>
+                                    </div>
+                                </div>
+                                <div class="text-center mt-3">
+                                    <span class="badge bg-secondary fs-6">
+                                        Duration: {{ assignment.duration_hours|floatformat:1 }} hours
+                                    </span>
+                                    {% if assignment.is_extended_window %}
+                                    <span class="badge bg-warning text-dark ms-2 fs-6">Extended Window</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h6><i class="bi bi-check-circle me-2"></i>Status</h6>
+                            <div class="d-flex align-items-center">
+                                <span class="badge bg-{{ assignment.status|lower }} fs-6 p-3 me-3">
+                                    {{ assignment.status }}
+                                </span>
+                                <div>
+                                    <small class="text-muted d-block">Created: {{ assignment.created_at|date:"M j, g:i A" }}</small>
+                                    <small class="text-muted">Updated: {{ assignment.updated_at|date:"M j, g:i A" }}</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Report Status -->
+                <div class="row mt-4">
+                    <div class="col-12">
+                        <div class="border-top pt-4">
+                            <h6><i class="bi bi-file-text me-2"></i>Report Status</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-center mb-3">
+                                        <div class="me-3">
+                                            {% if assignment.report_submitted %}
+                                            <i class="bi bi-check-circle-fill text-success fs-3"></i>
+                                            {% else %}
+                                            <i class="bi bi-clock-history text-warning fs-3"></i>
+                                            {% endif %}
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-1">Report Submission</h6>
+                                            <p class="mb-0">
+                                                {% if assignment.report_submitted %}
+                                                Submitted on {{ assignment.report_submitted_at|date:"M j, g:i A" }}
+                                                {% else %}
+                                                Pending submission
+                                                {% endif %}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="d-flex align-items-center mb-3">
+                                        <div class="me-3">
+                                            {% if assignment.report_verified %}
+                                            <i class="bi bi-shield-check text-success fs-3"></i>
+                                            {% else %}
+                                            <i class="bi bi-shield text-secondary fs-3"></i>
+                                            {% endif %}
+                                        </div>
+                                        <div>
+                                            <h6 class="mb-1">Verification Status</h6>
+                                            <p class="mb-0">
+                                                {% if assignment.report_verified %}
+                                                Verified by {{ assignment.report_verified_by.name }}
+                                                {% else %}
+                                                Not verified yet
+                                                {% endif %}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            {% if assignment.analyst == request.analyst and not assignment.report_submitted %}
+                            <div class="mt-3">
+                                <a href="{% url 'report_submission_create' %}?assignment={{ assignment.id }}" 
+                                   class="btn btn-success">
+                                    <i class="bi bi-cloud-upload me-2"></i>Submit Report
+                                </a>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Notes Section -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-journal-text me-2"></i>Notes & Details</h5>
+            </div>
+            <div class="card-body">
+                {% if assignment.notes %}
+                <div class="assignment-notes mb-4">
+                    <h6>Assignment Notes:</h6>
+                    <div class="bg-light p-3 rounded">
+                        {{ assignment.notes|linebreaks }}
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if assignment.completion_notes %}
+                <div class="completion-notes">
+                    <h6>Completion Notes:</h6>
+                    <div class="bg-light p-3 rounded">
+                        {{ assignment.completion_notes|linebreaks }}
+                    </div>
+                </div>
+                {% endif %}
+                
+                {% if not assignment.notes and not assignment.completion_notes %}
+                <div class="text-center py-3">
+                    <i class="bi bi-journal-x display-4 text-muted mb-3"></i>
+                    <p class="text-muted">No notes available for this assignment</p>
+                    {% if user.is_staff or assignment.analyst == request.analyst %}
+                    <a href="{% url 'update_assignment' assignment.id %}" class="btn btn-outline-primary">
+                        <i class="bi bi-pencil me-2"></i>Add Notes
+                    </a>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right Column - Related Information -->
+    <div class="col-lg-4">
+        <!-- Swap Requests -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-arrow-left-right me-2"></i>Swap Requests</h5>
+            </div>
+            <div class="card-body">
+                {% if swap_requests %}
+                <div class="list-group list-group-flush">
+                    {% for swap in swap_requests %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">
+                                {{ swap.requested_analyst.name }}
+                                <span class="badge bg-{{ swap.status|lower }} ms-1">{{ swap.status }}</span>
+                            </h6>
+                            <small>{{ swap.requested_at|date:"M j" }}</small>
+                        </div>
+                        <p class="mb-1 small">{{ swap.reason|truncatechars:100 }}</p>
+                        <div class="mt-2">
+                            <a href="{% url 'swap_request_detail' swap.id %}" class="btn btn-sm btn-outline-primary">
+                                View Details
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-3">
+                    <i class="bi bi-arrow-left-right display-4 text-muted mb-3"></i>
+                    <p class="text-muted">No swap requests for this assignment</p>
+                </div>
+                {% endif %}
+                
+                {% if can_request_swap %}
+                <div class="mt-3">
+                    <a href="{% url 'swap_request_create' assignment.id %}" class="btn btn-outline-warning w-100">
+                        <i class="bi bi-arrow-left-right me-2"></i>Request Swap
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Related Assignments -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-calendar-week me-2"></i>Same Day Assignments</h5>
+            </div>
+            <div class="card-body">
+                {% with same_day_assignments=assignment.get_same_day_assignments %}
+                {% if same_day_assignments %}
+                <div class="list-group list-group-flush">
+                    {% for other_assignment in same_day_assignments %}
+                    {% if other_assignment.id != assignment.id %}
+                    <a href="{% url 'assignment_detail' other_assignment.id %}" 
+                       class="list-group-item list-group-item-action">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">
+                                <span class="badge {% if other_assignment.monitoring_type.code == 'EM' %}bg-primary{% else %}bg-success{% endif %} me-2">
+                                    {{ other_assignment.monitoring_type.code }}
+                                </span>
+                                {{ other_assignment.analyst.name }}
+                            </h6>
+                            <small>{{ other_assignment.monitoring_type.get_code_display }}</small>
+                        </div>
+                        <small class="text-muted">
+                            {{ other_assignment.window_start|date:"g:i A" }} - {{ other_assignment.window_end|date:"g:i A" }}
+                        </small>
+                    </a>
+                    {% endif %}
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-3">
+                    <p class="text-muted">No other assignments on this date</p>
+                </div>
+                {% endif %}
+                {% endwith %}
+            </div>
+        </div>
+        
+        <!-- Quick Actions -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-lightning me-2"></i>Quick Actions</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-grid gap-2">
+                    {% if assignment.analyst == request.analyst %}
+                    {% if not assignment.report_submitted %}
+                    <a href="{% url 'report_submission_create' %}?assignment={{ assignment.id }}" 
+                       class="btn btn-success">
+                        <i class="bi bi-cloud-upload me-2"></i>Submit Report
+                    </a>
+                    {% else %}
+                    <a href="#" class="btn btn-outline-success">
+                        <i class="bi bi-check-circle me-2"></i>Report Submitted
+                    </a>
+                    {% endif %}
+                    
+                    {% if assignment.date >= today and assignment.status != 'COMPLETED' %}
+                    <a href="{% url 'swap_request_create' assignment.id %}" class="btn btn-warning">
+                        <i class="bi bi-arrow-left-right me-2"></i>Request Swap
+                    </a>
+                    {% endif %}
+                    {% endif %}
+                    
+                    <a href="{% url 'schedule_list' %}?date={{ assignment.date|date:'Y-m-d' }}" 
+                       class="btn btn-outline-primary">
+                        <i class="bi bi-calendar-day me-2"></i>View Day Schedule
+                    </a>
+                    
+                    {% if user.is_staff %}
+                    <a href="{% url 'update_assignment' assignment.id %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-pencil me-2"></i>Edit Assignment
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.avatar-circle-lg {
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 1.5rem;
+}
+
+.time-window-card {
+    padding: 20px;
+    border-radius: 10px;
+    background: #f8f9fa;
+    border: 2px solid #dee2e6;
+}
+
+.time-window-card.extended-window {
+    background: #fff3cd;
+    border-color: #ffc107;
+}
+
+.assignment-notes, .completion-notes {
+    white-space: pre-wrap;
+}
+
+@media print {
+    .btn-group, .card-header .btn, .quick-actions {
+        display: none !important;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Copy assignment link to clipboard
+    document.getElementById('copyAssignmentLink').addEventListener('click', function(e) {
+        e.preventDefault();
+        const url = window.location.href;
+        
+        navigator.clipboard.writeText(url).then(function() {
+            const originalText = this.innerHTML;
+            this.innerHTML = '<i class="bi bi-check me-2"></i>Copied!';
+            this.classList.add('btn-success');
+            
+            setTimeout(() => {
+                this.innerHTML = originalText;
+                this.classList.remove('btn-success');
+            }, 2000);
+        }.bind(this));
+    });
+    
+    // Update status badge colors
+    const statusBadge = document.querySelector('.badge.bg-{{ assignment.status|lower }}');
+    if (statusBadge) {
+        const status = '{{ assignment.status }}'.toLowerCase();
+        const statusColors = {
+            'scheduled': '#6c757d',
+            'confirmed': '#0d6efd',
+            'in_progress': '#ffc107',
+            'completed': '#198754',
+            'cancelled': '#dc3545'
+        };
+        
+        if (statusColors[status]) {
+            statusBadge.style.backgroundColor = statusColors[status];
+        }
+    }
+});
+</script>
+{% endblock %}

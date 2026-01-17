@@ -1,0 +1,303 @@
+<!-- templates/schedule_app/schedule_list.html -->
+{% extends 'schedule_app/base.html' %}
+{% load static %}
+
+{% block title %}Schedule List - SOC Monitoring Schedule{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+<li class="breadcrumb-item active">Schedule List</li>
+{% endblock %}
+
+{% block page_title %}Monitoring Schedule{% endblock %}
+{% block page_subtitle %}View and manage all monitoring assignments{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group">
+    {% if user.is_staff %}
+    <a href="{% url 'create_assignment' %}" class="btn btn-primary">
+        <i class="bi bi-plus-circle me-2"></i>Create Assignment
+    </a>
+    {% endif %}
+    <button type="button" class="btn btn-outline-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown">
+        <span class="visually-hidden">Toggle Dropdown</span>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+        <li><a class="dropdown-item" href="{% url 'schedule_calendar' %}">
+            <i class="bi bi-calendar-week me-2"></i>Calendar View
+        </a></li>
+        <li><a class="dropdown-item" href="{% url 'schedule_weekly' %}">
+            <i class="bi bi-calendar-range me-2"></i>Weekly View
+        </a></li>
+        <li><a class="dropdown-item" href="{% url 'schedule_monthly' %}">
+            <i class="bi bi-calendar-month me-2"></i>Monthly View
+        </a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item" href="{% url 'generate_schedule' %}">
+            <i class="bi bi-magic me-2"></i>Generate Schedule
+        </a></li>
+        {% if user.is_staff %}
+        <li><a class="dropdown-item" href="{% url 'bulk_operations' %}">
+            <i class="bi bi-collection me-2"></i>Bulk Operations
+        </a></li>
+        {% endif %}
+    </ul>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Filter Form -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label for="analyst" class="form-label">Analyst</label>
+                <select name="analyst" id="analyst" class="form-select">
+                    <option value="">All Analysts</option>
+                    {% for analyst in analysts %}
+                    <option value="{{ analyst.id }}" {% if request.GET.analyst == analyst.id|stringformat:"s" %}selected{% endif %}>
+                        {{ analyst.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="col-md-3">
+                <label for="monitoring_type" class="form-label">Monitoring Type</label>
+                <select name="monitoring_type" id="monitoring_type" class="form-select">
+                    <option value="">All Types</option>
+                    <option value="EM" {% if request.GET.monitoring_type == 'EM' %}selected{% endif %}>Early Morning</option>
+                    <option value="DM" {% if request.GET.monitoring_type == 'DM' %}selected{% endif %}>Daily Monitoring</option>
+                </select>
+            </div>
+            
+            <div class="col-md-2">
+                <label for="status" class="form-label">Status</label>
+                <select name="status" id="status" class="form-select">
+                    <option value="">All Status</option>
+                    <option value="SCHEDULED" {% if request.GET.status == 'SCHEDULED' %}selected{% endif %}>Scheduled</option>
+                    <option value="CONFIRMED" {% if request.GET.status == 'CONFIRMED' %}selected{% endif %}>Confirmed</option>
+                    <option value="IN_PROGRESS" {% if request.GET.status == 'IN_PROGRESS' %}selected{% endif %}>In Progress</option>
+                    <option value="COMPLETED" {% if request.GET.status == 'COMPLETED' %}selected{% endif %}>Completed</option>
+                    <option value="CANCELLED" {% if request.GET.status == 'CANCELLED' %}selected{% endif %}>Cancelled</option>
+                </select>
+            </div>
+            
+            <div class="col-md-2">
+                <label for="start_date" class="form-label">From Date</label>
+                <input type="date" name="start_date" id="start_date" class="form-control" value="{{ request.GET.start_date }}">
+            </div>
+            
+            <div class="col-md-2">
+                <label for="end_date" class="form-label">To Date</label>
+                <input type="date" name="end_date" id="end_date" class="form-control" value="{{ request.GET.end_date }}">
+            </div>
+            
+            <div class="col-md-12 mt-3">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-funnel me-2"></i>Filter
+                        </button>
+                        <a href="{% url 'schedule_list' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle me-2"></i>Clear
+                        </a>
+                    </div>
+                    <div class="text-muted">
+                        Showing {{ page_obj.start_index }}-{{ page_obj.end_index }} of {{ page_obj.paginator.count }} assignments
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Schedule Table -->
+<div class="card">
+    <div class="card-body">
+        {% if assignments %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Day</th>
+                        <th>Monitoring Type</th>
+                        <th>Analyst</th>
+                        <th>Time Window</th>
+                        <th>Duration</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for assignment in assignments %}
+                    <tr {% if assignment.is_monday_assignment and assignment.is_extended_window %}class="table-warning"{% endif %}>
+                        <td>
+                            <strong>{{ assignment.date|date:"Y-m-d" }}</strong>
+                            {% if assignment.is_monday_assignment %}
+                            <span class="badge bg-danger">Monday</span>
+                            {% endif %}
+                        </td>
+                        <td>{{ assignment.date|date:"D" }}</td>
+                        <td>
+                            <span class="badge {% if assignment.monitoring_type.code == 'EM' %}bg-primary{% else %}bg-success{% endif %}">
+                                {{ assignment.monitoring_type.get_code_display }}
+                            </span>
+                            {% if assignment.is_extended_window %}
+                            <span class="badge bg-warning text-dark">Extended</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="d-flex align-items-center">
+                                <div class="avatar-circle-sm bg-info me-2">
+                                    {{ assignment.analyst.name|first }}
+                                </div>
+                                {{ assignment.analyst.name }}
+                                {% if assignment.analyst == request.analyst %}
+                                <span class="badge bg-info ms-2">You</span>
+                                {% endif %}
+                            </div>
+                        </td>
+                        <td>
+                            <small class="text-muted">{{ assignment.window_start|date:"M j, g:i A" }}</small><br>
+                            <small class="text-muted">to {{ assignment.window_end|date:"M j, g:i A" }}</small>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">{{ assignment.duration_hours|floatformat:0 }}h</span>
+                        </td>
+                        <td>
+                            <span class="badge bg-{{ assignment.status|lower }}">{{ assignment.status }}</span>
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{% url 'assignment_detail' assignment.id %}" class="btn btn-outline-primary" title="View">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                {% if user.is_staff %}
+                                <a href="{% url 'update_assignment' assignment.id %}" class="btn btn-outline-secondary" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <a href="{% url 'delete_assignment' assignment.id %}" class="btn btn-outline-danger" title="Delete">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                                {% endif %}
+                                {% if assignment.analyst == request.analyst and assignment.date >= today %}
+                                <button class="btn btn-outline-warning quick-swap" data-assignment-id="{{ assignment.id }}" title="Request Swap">
+                                    <i class="bi bi-arrow-left-right"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+        <nav aria-label="Page navigation" class="mt-4">
+            <ul class="pagination justify-content-center">
+                {% if page_obj.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                        <i class="bi bi-chevron-double-left"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                        <i class="bi bi-chevron-left"></i>
+                    </a>
+                </li>
+                {% endif %}
+
+                {% for num in page_obj.paginator.page_range %}
+                    {% if page_obj.number == num %}
+                    <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                    {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">{{ num }}</a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+
+                {% if page_obj.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.next_page_number }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                        <i class="bi bi-chevron-right"></i>
+                    </a>
+                </li>
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}{% for key, value in request.GET.items %}{% if key != 'page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}">
+                        <i class="bi bi-chevron-double-right"></i>
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+
+        {% else %}
+        <div class="text-center py-5">
+            <i class="bi bi-calendar-x display-4 text-muted mb-3"></i>
+            <h4>No assignments found</h4>
+            <p class="text-muted">Try adjusting your filters or generate a new schedule</p>
+            {% if user.is_staff %}
+            <a href="{% url 'generate_schedule' %}" class="btn btn-primary mt-3">
+                <i class="bi bi-magic me-2"></i>Generate Schedule
+            </a>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Summary Stats -->
+<div class="row mt-4">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <h6 class="card-title">Total Assignments</h6>
+                <h2 class="text-primary">{{ total_count }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <h6 class="card-title">EM Assignments</h6>
+                <h2 class="text-success">{{ em_count }}</h2>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-body text-center">
+                <h6 class="card-title">DM Assignments</h6>
+                <h2 class="text-warning">{{ dm_count }}</h2>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.avatar-circle-sm {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 0.875rem;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/schedule.js' %}"></script>
+{% endblock %}

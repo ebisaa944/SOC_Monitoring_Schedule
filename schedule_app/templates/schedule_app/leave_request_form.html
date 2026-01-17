@@ -1,0 +1,550 @@
+<!-- templates/schedule_app/leave_request_form.html -->
+{% extends 'schedule_app/base.html' %}
+{% load static %}
+
+{% block title %}Request Leave - SOC Monitoring Schedule{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+<li class="breadcrumb-item"><a href="{% url 'leave_request_list' %}">Leave Requests</a></li>
+<li class="breadcrumb-item active">Request Leave</li>
+{% endblock %}
+
+{% block page_title %}Request Leave{% endblock %}
+{% block page_subtitle %}Submit a request for time off from monitoring duties{% endblock %}
+
+{% block page_actions %}
+<a href="{% url 'leave_request_list' %}" class="btn btn-outline-secondary">
+    <i class="bi bi-arrow-left me-2"></i>Back to Leave Requests
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Left Column - Leave Form -->
+    <div class="col-lg-8">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-calendar-minus me-2"></i>Leave Request Form</h5>
+            </div>
+            <div class="card-body">
+                <form method="post" id="leaveRequestForm">
+                    {% csrf_token %}
+                    
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}
+                        <p class="mb-0">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="row g-3">
+                        <!-- Leave Type -->
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="{{ form.leave_type.id_for_label }}" class="form-label">
+                                    <i class="bi bi-tag me-1"></i>Leave Type
+                                </label>
+                                {{ form.leave_type }}
+                                {% if form.leave_type.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.leave_type.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    Select the type of leave you're requesting
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <!-- Dates -->
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="{{ form.start_date.id_for_label }}" class="form-label">
+                                    <i class="bi bi-calendar-date me-1"></i>Start Date
+                                </label>
+                                {{ form.start_date }}
+                                {% if form.start_date.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.start_date.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="{{ form.end_date.id_for_label }}" class="form-label">
+                                    <i class="bi bi-calendar-date me-1"></i>End Date
+                                </label>
+                                {{ form.end_date }}
+                                {% if form.end_date.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.end_date.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        
+                        <!-- Duration Preview -->
+                        <div class="col-12">
+                            <div class="alert alert-info">
+                                <div class="d-flex justify-content-between align-items-center">
+                                    <div>
+                                        <i class="bi bi-calendar-week me-2"></i>
+                                        <strong>Leave Duration:</strong>
+                                        <span id="durationPreview" class="ms-2">Select dates to calculate</span>
+                                    </div>
+                                    <div id="workingDaysPreview" class="text-muted"></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Reason -->
+                        <div class="col-12">
+                            <div class="form-group">
+                                <label for="{{ form.reason.id_for_label }}" class="form-label">
+                                    <i class="bi bi-chat-text me-1"></i>Reason for Leave
+                                </label>
+                                {{ form.reason }}
+                                {% if form.reason.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.reason.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    Please provide details about why you need leave
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <!-- Emergency Contact -->
+                        <div class="col-12">
+                            <div class="form-group">
+                                <label for="{{ form.emergency_contact.id_for_label }}" class="form-label">
+                                    <i class="bi bi-telephone me-1"></i>Emergency Contact Information
+                                </label>
+                                {{ form.emergency_contact }}
+                                {% if form.emergency_contact.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.emergency_contact.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    Provide contact details in case of emergency during your leave
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <!-- Auto Adjust Pattern -->
+                        <div class="col-12">
+                            <div class="form-check">
+                                {{ form.auto_adjust_pattern }}
+                                <label for="{{ form.auto_adjust_pattern.id_for_label }}" class="form-check-label">
+                                    <i class="bi bi-arrow-repeat me-1"></i>Auto-adjust rotation pattern during leave
+                                </label>
+                                {% if form.auto_adjust_pattern.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.auto_adjust_pattern.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <small class="form-text text-muted d-block">
+                                    When checked, the system will automatically adjust the rotation pattern to cover your absence
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Impact Assessment -->
+                    <div class="alert alert-warning mt-4" id="impactAssessment" style="display: none;">
+                        <h6><i class="bi bi-exclamation-triangle me-2"></i>Leave Impact Assessment</h6>
+                        <div id="impactDetails"></div>
+                    </div>
+                    
+                    <!-- Form Actions -->
+                    <div class="mt-5 pt-3 border-top">
+                        <div class="d-flex justify-content-between">
+                            <a href="{% url 'leave_request_list' %}" class="btn btn-outline-secondary">
+                                <i class="bi bi-x-circle me-2"></i>Cancel
+                            </a>
+                            <div class="btn-group">
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-send me-2"></i>Submit Leave Request
+                                </button>
+                                <button type="button" class="btn btn-outline-primary" id="saveDraft">
+                                    <i class="bi bi-save me-2"></i>Save as Draft
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Right Column - Guidelines and Info -->
+    <div class="col-lg-4">
+        <!-- Leave Policies -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-journal-text me-2"></i>Leave Policies</h6>
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush">
+                    <div class="list-group-item">
+                        <h6 class="mb-1">Vacation Leave</h6>
+                        <small class="text-muted">Planned time off with advance notice</small>
+                    </div>
+                    <div class="list-group-item">
+                        <h6 class="mb-1">Sick Leave</h6>
+                        <small class="text-muted">Unplanned absence due to illness</small>
+                    </div>
+                    <div class="list-group-item">
+                        <h6 class="mb-1">Personal Leave</h6>
+                        <small class="text-muted">Personal or family matters</small>
+                    </div>
+                    <div class="list-group-item">
+                        <h6 class="mb-1">Training</h6>
+                        <small class="text-muted">Professional development activities</small>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info mt-3">
+                    <h6 class="alert-heading"><i class="bi bi-info-circle me-2"></i>Important Notes</h6>
+                    <ul class="mb-0 small">
+                        <li>Submit requests at least 48 hours in advance</li>
+                        <li>Emergency leave requires immediate notification</li>
+                        <li>Provide documentation for extended sick leave</li>
+                        <li>Check for coverage before submitting</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Calendar Preview -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-calendar3 me-2"></i>Calendar Preview</h6>
+            </div>
+            <div class="card-body">
+                <div id="calendarPreview" class="text-center py-3">
+                    <i class="bi bi-calendar display-4 text-muted mb-3"></i>
+                    <p class="text-muted">Select dates to see calendar preview</p>
+                </div>
+                <div class="text-center">
+                    <a href="{% url 'schedule_calendar' %}" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-calendar-week me-1"></i>View Full Calendar
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Your Upcoming Assignments -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-calendar-check me-2"></i>Your Upcoming Assignments</h6>
+            </div>
+            <div class="card-body">
+                <div class="list-group list-group-flush" id="upcomingAssignments">
+                    <div class="text-center py-3">
+                        <i class="bi bi-calendar-x display-4 text-muted mb-3"></i>
+                        <p class="text-muted">Loading upcoming assignments...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Success Modal -->
+<div class="modal fade" id="successModal" tabindex="-1" style="display: none;">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-check-circle me-2"></i>Leave Request Submitted</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center">
+                <i class="bi bi-envelope-check display-1 text-success mb-3"></i>
+                <h4>Request Submitted Successfully!</h4>
+                <p>Your leave request has been submitted for approval.</p>
+                <p class="text-muted">You will be notified once it's reviewed.</p>
+            </div>
+            <div class="modal-footer justify-content-center">
+                <a href="{% url 'leave_request_list' %}" class="btn btn-success">
+                    <i class="bi bi-list-ul me-2"></i>View My Requests
+                </a>
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                    <i class="bi bi-house me-2"></i>Return to Dashboard
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.leave-type-icon {
+    font-size: 1.2rem;
+    margin-right: 8px;
+}
+
+.form-check-input:checked {
+    background-color: #0d6efd;
+    border-color: #0d6efd;
+}
+
+#calendarPreview {
+    min-height: 150px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+}
+
+.assignment-conflict {
+    background-color: #fff3cd;
+    border-left: 3px solid #ffc107;
+}
+
+.assignment-ok {
+    background-color: #d1e7dd;
+    border-left: 3px solid #198754;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/forms.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const startDateInput = document.getElementById('{{ form.start_date.id_for_label }}');
+    const endDateInput = document.getElementById('{{ form.end_date.id_for_label }}');
+    const durationPreview = document.getElementById('durationPreview');
+    const workingDaysPreview = document.getElementById('workingDaysPreview');
+    const impactAssessment = document.getElementById('impactAssessment');
+    const impactDetails = document.getElementById('impactDetails');
+    const upcomingAssignments = document.getElementById('upcomingAssignments');
+    const calendarPreview = document.getElementById('calendarPreview');
+    
+    // Set minimum date to today
+    const today = new Date().toISOString().split('T')[0];
+    startDateInput.min = today;
+    endDateInput.min = today;
+    
+    // Calculate duration
+    function calculateDuration() {
+        const startDate = new Date(startDateInput.value);
+        const endDate = new Date(endDateInput.value);
+        
+        if (!startDateInput.value || !endDateInput.value) {
+            durationPreview.textContent = 'Select dates to calculate';
+            workingDaysPreview.textContent = '';
+            impactAssessment.style.display = 'none';
+            return;
+        }
+        
+        if (endDate < startDate) {
+            durationPreview.textContent = 'End date must be after start date';
+            workingDaysPreview.textContent = '';
+            impactAssessment.style.display = 'none';
+            endDateInput.classList.add('is-invalid');
+            return;
+        }
+        
+        endDateInput.classList.remove('is-invalid');
+        
+        // Calculate days difference
+        const timeDiff = endDate - startDate;
+        const daysDiff = Math.ceil(timeDiff / (1000 * 60 * 60 * 24)) + 1;
+        
+        // Calculate working days (Monday to Sunday - all days in SOC)
+        let workingDays = 0;
+        let currentDate = new Date(startDate);
+        
+        for (let i = 0; i < daysDiff; i++) {
+            // In SOC, all days are working days
+            workingDays++;
+            currentDate.setDate(currentDate.getDate() + 1);
+        }
+        
+        // Update previews
+        if (daysDiff === 1) {
+            durationPreview.textContent = '1 day';
+        } else {
+            durationPreview.textContent = `${daysDiff} days`;
+        }
+        
+        workingDaysPreview.textContent = `${workingDays} working days`;
+        
+        // Show impact assessment
+        assessImpact(startDateInput.value, endDateInput.value);
+        
+        // Update calendar preview
+        updateCalendarPreview(startDateInput.value, endDateInput.value);
+    }
+    
+    // Assess impact on assignments
+    function assessImpact(startDate, endDate) {
+        if (!startDate || !endDate) return;
+        
+        // This would typically be an AJAX call to the server
+        // For now, we'll simulate it
+        setTimeout(() => {
+            const hasConflicts = Math.random() > 0.5;
+            
+            if (hasConflicts) {
+                impactAssessment.style.display = 'block';
+                impactDetails.innerHTML = `
+                    <div class="alert alert-warning">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>Potential Conflicts Detected:</strong>
+                        <ul class="mb-0 mt-2">
+                            <li>You have 3 assigned shifts during this period</li>
+                            <li>2 of these are Monday duties</li>
+                            <li>Coverage may need to be arranged</li>
+                        </ul>
+                    </div>
+                    <p class="small text-muted">
+                        Consider discussing coverage options with your team before submitting.
+                    </p>
+                `;
+            } else {
+                impactAssessment.style.display = 'block';
+                impactDetails.innerHTML = `
+                    <div class="alert alert-success">
+                        <i class="bi bi-check-circle me-2"></i>
+                        <strong>No Conflicts Detected:</strong>
+                        <p class="mb-0 mt-2">You have no assigned shifts during this period.</p>
+                    </div>
+                `;
+            }
+        }, 500);
+    }
+    
+    // Update calendar preview
+    function updateCalendarPreview(startDate, endDate) {
+        if (!startDate || !endDate) return;
+        
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        
+        calendarPreview.innerHTML = `
+            <div class="mb-2">
+                <span class="badge bg-primary">${start.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+                <i class="bi bi-arrow-right mx-2 text-muted"></i>
+                <span class="badge bg-primary">${end.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+            </div>
+            <div class="small text-muted">
+                ${end.getFullYear()} • ${daysBetween(start, end) + 1} days
+            </div>
+        `;
+    }
+    
+    // Helper function to calculate days between dates
+    function daysBetween(date1, date2) {
+        const oneDay = 24 * 60 * 60 * 1000;
+        return Math.round(Math.abs((date1 - date2) / oneDay));
+    }
+    
+    // Load upcoming assignments
+    function loadUpcomingAssignments() {
+        // This would typically be an AJAX call
+        const assignments = [
+            { date: '2024-01-20', type: 'EM', analyst: 'You', status: 'SCHEDULED' },
+            { date: '2024-01-22', type: 'DM', analyst: 'You', status: 'SCHEDULED' },
+            { date: '2024-01-25', type: 'EM', analyst: 'You', status: 'CONFIRMED' },
+        ];
+        
+        let html = '';
+        assignments.forEach(assignment => {
+            html += `
+                <div class="list-group-item">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <div>
+                            <h6 class="mb-1">${assignment.date}</h6>
+                            <span class="badge ${assignment.type === 'EM' ? 'bg-primary' : 'bg-success'}">
+                                ${assignment.type}
+                            </span>
+                            <small class="text-muted ms-2">${assignment.analyst}</small>
+                        </div>
+                        <span class="badge bg-${assignment.status.toLowerCase()}">
+                            ${assignment.status}
+                        </span>
+                    </div>
+                </div>
+            `;
+        });
+        
+        if (assignments.length === 0) {
+            html = `
+                <div class="text-center py-3">
+                    <i class="bi bi-calendar-check display-4 text-success mb-3"></i>
+                    <p class="text-muted">No upcoming assignments in the next 30 days</p>
+                </div>
+            `;
+        }
+        
+        upcomingAssignments.innerHTML = html;
+    }
+    
+    // Event listeners
+    startDateInput.addEventListener('change', calculateDuration);
+    endDateInput.addEventListener('change', calculateDuration);
+    
+    // Save as draft
+    document.getElementById('saveDraft').addEventListener('click', function() {
+        alert('Draft saved! (This would save the form data locally)');
+    });
+    
+    // Form validation
+    const form = document.getElementById('leaveRequestForm');
+    form.addEventListener('submit', function(e) {
+        const startDate = startDateInput.value;
+        const endDate = endDateInput.value;
+        const reason = document.getElementById('{{ form.reason.id_for_label }}').value;
+        
+        if (!startDate || !endDate) {
+            e.preventDefault();
+            alert('Please select both start and end dates');
+            return;
+        }
+        
+        if (new Date(endDate) < new Date(startDate)) {
+            e.preventDefault();
+            alert('End date must be after start date');
+            return;
+        }
+        
+        if (!reason.trim()) {
+            e.preventDefault();
+            alert('Please provide a reason for your leave request');
+            return;
+        }
+        
+        // Show success modal on successful submission
+        // In a real app, this would be handled by the server response
+        // e.preventDefault();
+        // const modal = new bootstrap.Modal(document.getElementById('successModal'));
+        // modal.show();
+    });
+    
+    // Initial load
+    loadUpcomingAssignments();
+});
+</script>
+{% endblock %}

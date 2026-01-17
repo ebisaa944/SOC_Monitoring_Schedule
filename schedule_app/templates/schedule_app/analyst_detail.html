@@ -1,0 +1,375 @@
+<!-- templates/schedule_app/analyst_detail.html -->
+{% extends 'schedule_app/base.html' %}
+{% load static %}
+
+{% block title %}{{ analyst_detail.name }} - Analyst Details - SOC Monitoring Schedule{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+<li class="breadcrumb-item"><a href="{% url 'analyst_list' %}">Analysts</a></li>
+<li class="breadcrumb-item active">{{ analyst_detail.name }}</li>
+{% endblock %}
+
+{% block page_title %}{{ analyst_detail.name }}{% endblock %}
+{% block page_subtitle %}SOC Analyst Profile{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group">
+    <a href="{% url 'analyst_list' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-2"></i>Back to Analysts
+    </a>
+    {% if request.user.is_staff %}
+    <button type="button" class="btn btn-outline-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown">
+        <span class="visually-hidden">Toggle Dropdown</span>
+    </button>
+    <ul class="dropdown-menu dropdown-menu-end">
+        <li><a class="dropdown-item" href="#">
+            <i class="bi bi-pencil me-2"></i>Edit Profile
+        </a></li>
+        <li><a class="dropdown-item" href="#">
+            <i class="bi bi-calendar-plus me-2"></i>Add Assignment
+        </a></li>
+        <li><hr class="dropdown-divider"></li>
+        <li><a class="dropdown-item text-danger" href="#">
+            <i class="bi bi-person-x me-2"></i>Deactivate Account
+        </a></li>
+    </ul>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <!-- Left Column - Profile Info -->
+    <div class="col-lg-4">
+        <!-- Profile Card -->
+        <div class="card mb-4">
+            <div class="card-body text-center">
+                <div class="avatar-circle-xl bg-info mb-3 mx-auto">
+                    {{ analyst_detail.name|first }}
+                </div>
+                <h4 class="card-title mb-1">{{ analyst_detail.name }}</h4>
+                <p class="text-muted mb-3">SOC Analyst</p>
+                
+                <div class="d-flex justify-content-center gap-3 mb-4">
+                    <div class="text-center">
+                        <h5 class="mb-0">{{ total_assignments }}</h5>
+                        <small class="text-muted">Total Assignments</small>
+                    </div>
+                    <div class="text-center">
+                        <h5 class="mb-0">{{ em_assignments }}</h5>
+                        <small class="text-muted">EM Duties</small>
+                    </div>
+                    <div class="text-center">
+                        <h5 class="mb-0">{{ dm_assignments }}</h5>
+                        <small class="text-muted">DM Duties</small>
+                    </div>
+                </div>
+                
+                <div class="list-group list-group-flush text-start">
+                    <div class="list-group-item">
+                        <i class="bi bi-envelope me-2"></i>
+                        <strong>Email:</strong> {{ analyst_detail.email }}
+                    </div>
+                    <div class="list-group-item">
+                        <i class="bi bi-telephone me-2"></i>
+                        <strong>Phone:</strong> {{ analyst_detail.phone }}
+                    </div>
+                    <div class="list-group-item">
+                        <i class="bi bi-calendar me-2"></i>
+                        <strong>Join Date:</strong> {{ analyst_detail.join_date|date:"F j, Y" }}
+                    </div>
+                    <div class="list-group-item">
+                        <i class="bi bi-person-check me-2"></i>
+                        <strong>Status:</strong> 
+                        <span class="badge {% if analyst_detail.is_active %}bg-success{% else %}bg-secondary{% endif %}">
+                            {{ analyst_detail.is_active|yesno:"Active,Inactive" }}
+                        </span>
+                    </div>
+                    <div class="list-group-item">
+                        <i class="bi bi-123 me-2"></i>
+                        <strong>Pattern Position:</strong> {{ analyst_detail.pattern_position }}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Stats -->
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-bar-chart me-2"></i>Performance Stats</h6>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>Assignment Completion</span>
+                        <span>85%</span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-success" role="progressbar" style="width: 85%"></div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>Report Quality</span>
+                        <span>92%</span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-info" role="progressbar" style="width: 92%"></div>
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>On-time Submissions</span>
+                        <span>78%</span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-warning" role="progressbar" style="width: 78%"></div>
+                    </div>
+                </div>
+                <div>
+                    <div class="d-flex justify-content-between mb-1">
+                        <span>Monday Duties Completed</span>
+                        <span>{{ monday_duties }}</span>
+                    </div>
+                    <div class="progress" style="height: 10px;">
+                        <div class="progress-bar bg-danger" role="progressbar" 
+                             style="width: {% widthratio monday_duties total_assignments 100 %}%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Right Column - Schedule & Activity -->
+    <div class="col-lg-8">
+        <!-- Upcoming Assignments -->
+        <div class="card mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-calendar-week me-2"></i>Upcoming Assignments</h5>
+                <a href="{% url 'schedule_list' %}?analyst={{ analyst_detail.id }}" class="btn btn-sm btn-outline-primary">
+                    View All
+                </a>
+            </div>
+            <div class="card-body">
+                {% if upcoming_assignments %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Day</th>
+                                <th>Monitoring Type</th>
+                                <th>Time Window</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for assignment in upcoming_assignments %}
+                            <tr>
+                                <td>{{ assignment.date|date:"M j, Y" }}</td>
+                                <td>{{ assignment.date|date:"D" }}</td>
+                                <td>
+                                    <span class="badge {% if assignment.monitoring_type.code == 'EM' %}bg-primary{% else %}bg-success{% endif %}">
+                                        {{ assignment.monitoring_type.get_code_display }}
+                                    </span>
+                                    {% if assignment.is_monday_assignment %}
+                                    <span class="badge bg-danger ms-1">Monday</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <small>{{ assignment.window_start|date:"g:i A" }} to {{ assignment.window_end|date:"g:i A" }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ assignment.status|lower }}">{{ assignment.status }}</span>
+                                </td>
+                                <td>
+                                    <a href="{% url 'assignment_detail' assignment.id %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-calendar-x display-4 text-muted mb-3"></i>
+                    <h6>No upcoming assignments</h6>
+                    <p class="text-muted">{{ analyst_detail.name }} has no scheduled assignments in the next 30 days.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-clock-history me-2"></i>Recent Activity (Last 30 Days)</h5>
+            </div>
+            <div class="card-body">
+                {% if past_assignments %}
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Monitoring Type</th>
+                                <th>Time Window</th>
+                                <th>Status</th>
+                                <th>Report</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for assignment in past_assignments %}
+                            <tr>
+                                <td>{{ assignment.date|date:"M j, Y" }}</td>
+                                <td>
+                                    <span class="badge {% if assignment.monitoring_type.code == 'EM' %}bg-primary{% else %}bg-success{% endif %}">
+                                        {{ assignment.monitoring_type.get_code_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <small>{{ assignment.window_start|date:"g:i A" }} to {{ assignment.window_end|date:"g:i A" }}</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-{{ assignment.status|lower }}">{{ assignment.status }}</span>
+                                </td>
+                                <td>
+                                    {% if assignment.report_submitted %}
+                                    <span class="badge bg-success">
+                                        <i class="bi bi-check-circle me-1"></i>Submitted
+                                    </span>
+                                    {% else %}
+                                    <span class="badge bg-warning text-dark">
+                                        <i class="bi bi-clock me-1"></i>Pending
+                                    </span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-activity display-4 text-muted mb-3"></i>
+                    <h6>No recent activity</h6>
+                    <p class="text-muted">No assignments in the past 30 days.</p>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- Leave Requests -->
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-calendar-minus me-2"></i>Recent Leave Requests</h5>
+            </div>
+            <div class="card-body">
+                {% if leave_requests %}
+                <div class="list-group list-group-flush">
+                    {% for leave in leave_requests %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">{{ leave.start_date|date:"M j" }} - {{ leave.end_date|date:"M j, Y" }}</h6>
+                            <span class="badge bg-{{ leave.status|lower }}">{{ leave.status }}</span>
+                        </div>
+                        <p class="mb-1">{{ leave.get_leave_type_display }}</p>
+                        <small class="text-muted">{{ leave.reason|truncatechars:100 }}</small>
+                        {% if leave.covered_by %}
+                        <div class="mt-2">
+                            <small><strong>Covered by:</strong> {{ leave.covered_by.name }}</small>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-3">
+                    <i class="bi bi-calendar-check display-4 text-muted mb-3"></i>
+                    <h6>No leave requests</h6>
+                    <p class="text-muted">No leave requests in the past 6 months.</p>
+                </div>
+                {% endif %}
+                
+                {% if analyst_detail == request.analyst %}
+                <div class="mt-3">
+                    <a href="{% url 'leave_request_create' %}" class="btn btn-outline-primary w-100">
+                        <i class="bi bi-calendar-plus me-2"></i>Request Leave
+                    </a>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics Row -->
+<div class="row mt-4">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h6 class="card-title text-muted">Total EM Duties</h6>
+                <h2 class="text-primary">{{ em_assignments }}</h2>
+                <small class="text-muted">
+                    {% widthratio em_assignments total_assignments 100 %}% of total assignments
+                </small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h6 class="card-title text-muted">Total DM Duties</h6>
+                <h2 class="text-success">{{ dm_assignments }}</h2>
+                <small class="text-muted">
+                    {% widthratio dm_assignments total_assignments 100 %}% of total assignments
+                </small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h6 class="card-title text-muted">Monday Duties</h6>
+                <h2 class="text-danger">{{ monday_duties }}</h2>
+                <small class="text-muted">
+                    {% widthratio monday_duties total_assignments 100 %}% of total assignments
+                </small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h6 class="card-title text-muted">Extended Windows</h6>
+                <h2 class="text-warning">
+                    {% with extended_count=analyst_detail.assignments.filter|length %}
+                    {{ extended_count|default:"0" }}
+                    {% endwith %}
+                </h2>
+                <small class="text-muted">Special monitoring periods</small>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.avatar-circle-xl {
+    width: 100px;
+    height: 100px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    font-size: 2.5rem;
+}
+</style>
+{% endblock %}

@@ -1,0 +1,449 @@
+<!-- templates/schedule_app/schedule_monthly.html -->
+{% extends 'schedule_app/base.html' %}
+{% load static %}
+{% load schedule_tags %}
+
+{% block title %}Monthly View - SOC Monitoring Schedule{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+<li class="breadcrumb-item active">Monthly View</li>
+{% endblock %}
+
+{% block page_title %}Monthly Schedule - {{ current_month|date:"F Y" }}{% endblock %}
+{% block page_subtitle %}View the entire month's monitoring schedule at a glance{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group">
+    <a href="{% url 'schedule_monthly' %}?month={{ prev_month }}" class="btn btn-outline-primary">
+        <i class="bi bi-chevron-left"></i> Previous Month
+    </a>
+    <a href="{% url 'schedule_monthly' %}?month={{ today_month }}" class="btn btn-outline-primary">
+        <i class="bi bi-calendar-check"></i> Current Month
+    </a>
+    <a href="{% url 'schedule_monthly' %}?month={{ next_month }}" class="btn btn-outline-primary">
+        Next Month <i class="bi bi-chevron-right"></i>
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- Month Navigation and Stats -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row align-items-center">
+            <div class="col-md-4">
+                <div class="d-flex align-items-center">
+                    <div class="calendar-icon me-3">
+                        <i class="bi bi-calendar-month display-4 text-primary"></i>
+                    </div>
+                    <div>
+                        <h3 class="mb-0">{{ current_month|date:"F Y" }}</h3>
+                        <p class="text-muted mb-0">{{ days_in_month }} days, {{ month_weeks }} weeks</p>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-md-8">
+                <div class="row">
+                    <div class="col-3 text-center">
+                        <h6 class="text-muted">EM Assignments</h6>
+                        <h3 class="text-primary">{{ month_em_count }}</h3>
+                    </div>
+                    <div class="col-3 text-center">
+                        <h6 class="text-muted">DM Assignments</h6>
+                        <h3 class="text-success">{{ month_dm_count }}</h3>
+                    </div>
+                    <div class="col-3 text-center">
+                        <h6 class="text-muted">Monday Duties</h6>
+                        <h3 class="text-danger">{{ month_monday_count }}</h3>
+                    </div>
+                    <div class="col-3 text-center">
+                        <h6 class="text-muted">Analysts</h6>
+                        <h3 class="text-info">{{ analysts_count }}</h3>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Monthly Calendar Grid -->
+<div class="card">
+    <div class="card-body">
+        <!-- Day Headers -->
+        <div class="row g-0 text-center mb-2">
+            <div class="col monthly-day-header">Mon</div>
+            <div class="col monthly-day-header">Tue</div>
+            <div class="col monthly-day-header">Wed</div>
+            <div class="col monthly-day-header">Thu</div>
+            <div class="col monthly-day-header">Fri</div>
+            <div class="col monthly-day-header">Sat</div>
+            <div class="col monthly-day-header">Sun</div>
+        </div>
+        
+        <!-- Calendar Grid -->
+        {% for week in month_calendar %}
+        <div class="row g-0 monthly-week">
+            {% for day in week %}
+            <div class="col monthly-day 
+                {% if day.month != current_month.month %}other-month{% endif %}
+                {% if day|date:'Y-m-d' == today|date:'Y-m-d' %}today{% endif %}
+                {% if day.weekday == 0 %}monday{% endif %}">
+                
+                <div class="monthly-day-header-inner">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="day-number {% if day|date:'Y-m-d' == today|date:'Y-m-d' %}today-badge{% endif %}">
+                            {{ day.day }}
+                        </span>
+                        {% if day.weekday == 0 %}
+                        <span class="badge bg-danger">Mon</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="monthly-assignments">
+                    {% with day_assignments=assignments_by_date|get_item:day|default:"" %}
+                    <!-- EM Assignment -->
+                    {% with em_assignment=day_assignments|get_em_assignment %}
+                    {% if em_assignment %}
+                    <div class="monthly-assignment em-assignment 
+                              {% if em_assignment.analyst == request.analyst %}your-assignment{% endif %}
+                              {% if em_assignment.is_extended_window %}extended{% endif %}">
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-primary me-1">EM</span>
+                            <small class="assignment-analyst">{{ em_assignment.analyst.name|slice:":3" }}</small>
+                        </div>
+                        <div class="assignment-time">
+                            <small>{{ em_assignment.window_start|date:"g:i" }}-{{ em_assignment.window_end|date:"g:i" }}</small>
+                        </div>
+                        {% if em_assignment.is_extended_window %}
+                        <div class="extended-indicator" title="Extended Window">
+                            <i class="bi bi-clock-history"></i>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    {% endwith %}
+                    
+                    <!-- DM Assignment -->
+                    {% with dm_assignment=day_assignments|get_dm_assignment %}
+                    {% if dm_assignment %}
+                    <div class="monthly-assignment dm-assignment 
+                              {% if dm_assignment.analyst == request.analyst %}your-assignment{% endif %}
+                              {% if dm_assignment.is_extended_window %}extended{% endif %}">
+                        <div class="d-flex align-items-center">
+                            <span class="badge bg-success me-1">DM</span>
+                            <small class="assignment-analyst">{{ dm_assignment.analyst.name|slice:":3" }}</small>
+                        </div>
+                        <div class="assignment-time">
+                            <small>{{ dm_assignment.window_start|date:"g:i" }}-{{ dm_assignment.window_end|date:"g:i" }}</small>
+                        </div>
+                        {% if dm_assignment.is_extended_window %}
+                        <div class="extended-indicator" title="Extended Window">
+                            <i class="bi bi-clock-history"></i>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endif %}
+                    {% endwith %}
+                    
+                    {% if not em_assignment and not dm_assignment %}
+                    <div class="text-center py-2">
+                        <small class="text-muted">No assignments</small>
+                    </div>
+                    {% endif %}
+                    {% endwith %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% endfor %}
+    </div>
+</div>
+
+<!-- Monthly Summary -->
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-pie-chart me-2"></i>Month Distribution</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-6">
+                        <h6 class="text-muted">By Analyst</h6>
+                        <ul class="list-unstyled">
+                            {% for analyst, count in analyst_monthly_count.items %}
+                            <li class="mb-2">
+                                <div class="d-flex justify-content-between">
+                                    <span>{{ analyst }}</span>
+                                    <span class="badge bg-secondary">{{ count }}</span>
+                                </div>
+                                <div class="progress" style="height: 5px;">
+                                    <div class="progress-bar" role="progressbar" 
+                                         style="width: {{ count|percentage:max_monthly_count }}%"></div>
+                                </div>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div class="col-6">
+                        <h6 class="text-muted">By Type</h6>
+                        <div class="d-flex align-items-center mb-3">
+                            <div class="flex-shrink-0">
+                                <span class="badge bg-primary me-2">EM</span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between">
+                                    <span>Early Morning</span>
+                                    <span>{{ month_em_count }}</span>
+                                </div>
+                                <div class="progress" style="height: 5px;">
+                                    <div class="progress-bar bg-primary" role="progressbar" 
+                                         style="width: {{ month_em_count|percentage:total_assignments }}%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center">
+                            <div class="flex-shrink-0">
+                                <span class="badge bg-success me-2">DM</span>
+                            </div>
+                            <div class="flex-grow-1">
+                                <div class="d-flex justify-content-between">
+                                    <span>Daily Monitoring</span>
+                                    <span>{{ month_dm_count }}</span>
+                                </div>
+                                <div class="progress" style="height: 5px;">
+                                    <div class="progress-bar bg-success" role="progressbar" 
+                                         style="width: {{ month_dm_count|percentage:total_assignments }}%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-calendar-event me-2"></i>Upcoming Monday Duties</h6>
+            </div>
+            <div class="card-body">
+                {% if upcoming_monday_duties %}
+                <div class="list-group list-group-flush">
+                    {% for duty in upcoming_monday_duties %}
+                    <div class="list-group-item">
+                        <div class="d-flex w-100 justify-content-between">
+                            <h6 class="mb-1">{{ duty.date|date:"F j, Y" }}</h6>
+                            <small class="text-muted">{{ duty.days_until }} days from now</small>
+                        </div>
+                        <div class="row mt-2">
+                            <div class="col-6">
+                                <small class="text-primary">EM:</small>
+                                <strong>{{ duty.em_analyst }}</strong>
+                                <small class="text-muted d-block">{{ duty.em_window }}</small>
+                            </div>
+                            <div class="col-6">
+                                <small class="text-success">DM:</small>
+                                <strong>{{ duty.dm_analyst }}</strong>
+                                <small class="text-muted d-block">{{ duty.dm_window }}</small>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <div class="text-center py-4">
+                    <i class="bi bi-calendar-x display-4 text-muted mb-3"></i>
+                    <h6>No upcoming Monday duties</h6>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Export Options -->
+<div class="card mt-4">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <h6 class="mb-0">Monthly Report</h6>
+                <p class="text-muted mb-0">Generate and export monthly schedule report</p>
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-outline-primary" onclick="window.print()">
+                    <i class="bi bi-printer me-2"></i>Print Month
+                </button>
+                <button class="btn btn-outline-success" id="generateReport">
+                    <i class="bi bi-file-earmark-text me-2"></i>Generate Report
+                </button>
+                <button class="btn btn-outline-secondary" id="exportMonth">
+                    <i class="bi bi-download me-2"></i>Export Data
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.monthly-day-header {
+    padding: 10px;
+    font-weight: bold;
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+}
+
+.monthly-week {
+    min-height: 120px;
+}
+
+.monthly-day {
+    border: 1px solid #dee2e6;
+    padding: 5px;
+    height: 120px;
+    overflow-y: auto;
+    background: white;
+}
+
+.monthly-day.other-month {
+    background-color: #f8f9fa;
+    color: #adb5bd;
+}
+
+.monthly-day.today {
+    background-color: #e7f1ff;
+}
+
+.monthly-day.monday {
+    background-color: #fff3cd;
+}
+
+.monthly-day-header-inner {
+    margin-bottom: 5px;
+    padding-bottom: 5px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.day-number {
+    font-weight: bold;
+    font-size: 1.1rem;
+}
+
+.day-number.today-badge {
+    background: #0d6efd;
+    color: white;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.monthly-assignments {
+    font-size: 0.75rem;
+}
+
+.monthly-assignment {
+    padding: 3px;
+    margin-bottom: 3px;
+    border-radius: 3px;
+    background: #f8f9fa;
+    border-left: 3px solid #dee2e6;
+}
+
+.em-assignment {
+    border-left-color: #0d6efd;
+    background: #e7f1ff;
+}
+
+.dm-assignment {
+    border-left-color: #198754;
+    background: #d1e7dd;
+}
+
+.em-assignment.your-assignment {
+    background: #cfe2ff;
+}
+
+.dm-assignment.your-assignment {
+    background: #a3cfbb;
+}
+
+.em-assignment.extended, .dm-assignment.extended {
+    border-left-color: #ffc107;
+    background: #fff3cd;
+}
+
+.assignment-analyst {
+    font-weight: 600;
+}
+
+.assignment-time {
+    color: #6c757d;
+    font-size: 0.7rem;
+}
+
+.extended-indicator {
+    color: #ffc107;
+    font-size: 0.7rem;
+}
+
+@media (max-width: 768px) {
+    .monthly-day {
+        height: 100px;
+        font-size: 0.7rem;
+    }
+    
+    .day-number {
+        font-size: 0.9rem;
+    }
+    
+    .monthly-assignment {
+        padding: 2px;
+        margin-bottom: 2px;
+    }
+}
+
+@media print {
+    .monthly-day {
+        height: auto;
+        page-break-inside: avoid;
+    }
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Generate Report
+    document.getElementById('generateReport').addEventListener('click', function() {
+        const month = '{{ current_month|date:"Y-m" }}';
+        window.open(`/reports/monthly/${month}/`, '_blank');
+    });
+    
+    // Export Month Data
+    document.getElementById('exportMonth').addEventListener('click', function() {
+        const month = '{{ current_month|date:"Y-m" }}';
+        window.location.href = `/api/schedule/export/monthly/${month}/`;
+    });
+    
+    // Add click events to day cells
+    document.querySelectorAll('.monthly-day').forEach(dayCell => {
+        dayCell.addEventListener('click', function() {
+            const dateStr = this.getAttribute('data-date');
+            if (dateStr) {
+                window.location.href = `/schedule/list/?date=${dateStr}`;
+            }
+        });
+    });
+});
+</script>
+{% endblock %}

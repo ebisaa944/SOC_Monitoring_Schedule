@@ -1,0 +1,81 @@
+<!-- templates/schedule_app/logout.html -->
+{% extends 'schedule_app/base.html' %}
+{% load static %}
+
+{% block title %}Logged Out - SOC Monitoring Schedule{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+        <div class="card shadow-sm">
+            <div class="card-body p-5 text-center">
+                <div class="mb-4">
+                    <i class="bi bi-box-arrow-right display-1 text-primary"></i>
+                </div>
+                
+                <h2 class="card-title mb-3">Successfully Logged Out</h2>
+                
+                <p class="card-text text-muted mb-4">
+                    You have been successfully logged out of the SOC Monitoring Schedule system.
+                </p>
+                
+                <div class="d-grid gap-2">
+                    <a href="{% url 'login' %}" class="btn btn-primary btn-lg">
+                        <i class="bi bi-box-arrow-in-right me-2"></i> Sign In Again
+                    </a>
+                    <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-house me-2"></i> Return to Home
+                    </a>
+                </div>
+                
+                <div class="mt-5 pt-4 border-top">
+                    <h6 class="text-muted mb-3">Need Help?</h6>
+                    <div class="d-flex justify-content-center gap-3">
+                        <a href="#" class="text-decoration-none">
+                            <i class="bi bi-question-circle me-1"></i> FAQ
+                        </a>
+                        <a href="#" class="text-decoration-none">
+                            <i class="bi bi-envelope me-1"></i> Contact Admin
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="card mt-3">
+            <div class="card-body text-center">
+                <p class="mb-0 text-muted">
+                    <i class="bi bi-clock-history me-1"></i>
+                    Session ended at {% now "H:i" %} on {% now "F j, Y" %}
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Auto-redirect after 10 seconds
+    setTimeout(function() {
+        window.location.href = "{% url 'login' %}";
+    }, 10000);
+    
+    // Countdown timer
+    let seconds = 10;
+    const timerElement = document.createElement('p');
+    timerElement.className = 'text-muted small mt-3';
+    timerElement.innerHTML = `Redirecting to login page in <span id="countdown">${seconds}</span> seconds...`;
+    document.querySelector('.card-text').after(timerElement);
+    
+    const countdownElement = document.getElementById('countdown');
+    const countdownInterval = setInterval(function() {
+        seconds--;
+        countdownElement.textContent = seconds;
+        
+        if (seconds <= 0) {
+            clearInterval(countdownInterval);
+        }
+    }, 1000);
+});
+</script>
+{% endblock %}

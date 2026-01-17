@@ -1,0 +1,498 @@
+<!-- templates/schedule_app/assignment_form.html -->
+{% extends 'schedule_app/base.html' %}
+{% load static %}
+
+{% block title %}
+{% if form.instance.pk %}Edit Assignment{% else %}Create Assignment{% endif %} - SOC Monitoring Schedule
+{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Dashboard</a></li>
+<li class="breadcrumb-item"><a href="{% url 'schedule_list' %}">Schedule</a></li>
+<li class="breadcrumb-item active">
+    {% if form.instance.pk %}Edit Assignment{% else %}Create Assignment{% endif %}
+</li>
+{% endblock %}
+
+{% block page_title %}
+{% if form.instance.pk %}Edit Assignment{% else %}Create New Assignment{% endif %}
+{% endblock %}
+{% block page_subtitle %}
+{% if form.instance.pk %}Update assignment details{% else %}Schedule a new monitoring assignment{% endif %}
+{% endblock %}
+
+{% block page_actions %}
+<div class="btn-group">
+    <a href="{% url 'schedule_list' %}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left me-2"></i>Back to Schedule
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">
+                    <i class="bi bi-calendar-plus me-2"></i>
+                    {% if form.instance.pk %}Edit Assignment{% else %}Create New Assignment{% endif %}
+                </h5>
+            </div>
+            <div class="card-body">
+                <form method="post" id="assignmentForm">
+                    {% csrf_token %}
+                    
+                    {% if form.non_field_errors %}
+                    <div class="alert alert-danger">
+                        {% for error in form.non_field_errors %}
+                        <p class="mb-0">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                    
+                    <div class="row g-3">
+                        <!-- Date -->
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="{{ form.date.id_for_label }}" class="form-label">
+                                    <i class="bi bi-calendar-date me-1"></i>Date
+                                </label>
+                                {{ form.date }}
+                                {% if form.date.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.date.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    Select the date for this assignment
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <!-- Monitoring Type -->
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="{{ form.monitoring_type.id_for_label }}" class="form-label">
+                                    <i class="bi bi-clock-history me-1"></i>Monitoring Type
+                                </label>
+                                {{ form.monitoring_type }}
+                                {% if form.monitoring_type.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.monitoring_type.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    EM: Early Morning, DM: Daily Monitoring
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <!-- Analyst -->
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="{{ form.analyst.id_for_label }}" class="form-label">
+                                    <i class="bi bi-person me-1"></i>Analyst
+                                </label>
+                                {{ form.analyst }}
+                                {% if form.analyst.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.analyst.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    Select the analyst for this assignment
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <!-- Status -->
+                        <div class="col-md-6">
+                            <div class="form-group">
+                                <label for="{{ form.status.id_for_label }}" class="form-label">
+                                    <i class="bi bi-check-circle me-1"></i>Status
+                                </label>
+                                {{ form.status }}
+                                {% if form.status.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.status.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    Current status of the assignment
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <!-- Time Window (Read-only, calculated based on date and type) -->
+                        <div class="col-12">
+                            <div class="form-group">
+                                <label class="form-label">
+                                    <i class="bi bi-clock me-1"></i>Time Window
+                                </label>
+                                <div class="bg-light p-3 rounded time-window-preview">
+                                    <div class="row align-items-center">
+                                        <div class="col-md-5">
+                                            <div class="text-center">
+                                                <h6 class="text-muted mb-1">Start Time</h6>
+                                                <div id="startTimePreview" class="fs-5 fw-bold text-primary">
+                                                    Calculating...
+                                                </div>
+                                                <small id="startDatePreview" class="text-muted"></small>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-2 text-center">
+                                            <i class="bi bi-arrow-right display-6 text-muted"></i>
+                                        </div>
+                                        <div class="col-md-5">
+                                            <div class="text-center">
+                                                <h6 class="text-muted mb-1">End Time</h6>
+                                                <div id="endTimePreview" class="fs-5 fw-bold text-success">
+                                                    Calculating...
+                                                </div>
+                                                <small id="endDatePreview" class="text-muted"></small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="text-center mt-3">
+                                        <span id="durationPreview" class="badge bg-secondary fs-6">
+                                            Duration: Calculating...
+                                        </span>
+                                        <span id="extendedWarning" class="badge bg-warning text-dark fs-6 d-none">
+                                            Extended Window
+                                        </span>
+                                        <span id="mondayWarning" class="badge bg-danger fs-6 d-none">
+                                            Monday Duty
+                                        </span>
+                                    </div>
+                                </div>
+                                <small class="form-text text-muted">
+                                    Time window is automatically calculated based on date and monitoring type
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <!-- Notes -->
+                        <div class="col-12">
+                            <div class="form-group">
+                                <label for="{{ form.notes.id_for_label }}" class="form-label">
+                                    <i class="bi bi-journal-text me-1"></i>Notes
+                                </label>
+                                {{ form.notes }}
+                                {% if form.notes.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.notes.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    Optional notes about this assignment
+                                </small>
+                            </div>
+                        </div>
+                        
+                        <!-- Completion Notes (only for editing completed assignments) -->
+                        {% if form.instance.pk and form.instance.status == 'COMPLETED' %}
+                        <div class="col-12">
+                            <div class="form-group">
+                                <label for="{{ form.completion_notes.id_for_label }}" class="form-label">
+                                    <i class="bi bi-check-circle me-1"></i>Completion Notes
+                                </label>
+                                {{ form.completion_notes }}
+                                {% if form.completion_notes.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.completion_notes.errors %}
+                                    {{ error }}
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
+                                <small class="form-text text-muted">
+                                    Notes about assignment completion
+                                </small>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Conflict Check -->
+                    <div class="alert alert-warning mt-4 d-none" id="conflictAlert">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <span id="conflictMessage"></span>
+                    </div>
+                    
+                    <!-- Form Actions -->
+                    <div class="mt-5 pt-3 border-top">
+                        <div class="d-flex justify-content-between">
+                            <div>
+                                <a href="{% url 'schedule_list' %}" class="btn btn-outline-secondary">
+                                    <i class="bi bi-x-circle me-2"></i>Cancel
+                                </a>
+                            </div>
+                            <div class="btn-group">
+                                {% if form.instance.pk %}
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-check-circle me-2"></i>Update Assignment
+                                </button>
+                                {% else %}
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-plus-circle me-2"></i>Create Assignment
+                                </button>
+                                <button type="button" class="btn btn-outline-primary" id="saveAndAddAnother">
+                                    <i class="bi bi-plus-square me-2"></i>Save & Add Another
+                                </button>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Help Card -->
+        <div class="card mt-4">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-info-circle me-2"></i>About Assignment Scheduling</h6>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Early Morning Monitoring (EM)</h6>
+                        <ul class="small">
+                            <li>Regular days: Previous day 5:00 PM to Current day 7:00 AM (14h)</li>
+                            <li>Monday: Saturday 5:00 PM to Monday 7:00 AM (38h - Extended)</li>
+                            <li>Server status monitoring report</li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Daily Monitoring (DM)</h6>
+                        <ul class="small">
+                            <li>Regular days: Previous day 5:00 PM to Current day 5:00 PM (24h)</li>
+                            <li>Monday: Friday 5:00 PM to Monday 5:00 PM (72h - Extended)</li>
+                            <li>Daily events and incidents report</li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="alert alert-info mt-3">
+                    <i class="bi bi-lightbulb me-2"></i>
+                    <strong>Tip:</strong> Time windows are automatically calculated based on the selected date and monitoring type.
+                    Monday assignments have extended time windows as shown above.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.time-window-preview {
+    border: 2px solid #dee2e6;
+    border-radius: 8px;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+textarea.form-control {
+    min-height: 100px;
+}
+</style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{% static 'js/forms.js' %}"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const dateInput = document.getElementById('id_date');
+    const typeSelect = document.getElementById('id_monitoring_type');
+    const analystSelect = document.getElementById('id_analyst');
+    const statusSelect = document.getElementById('id_status');
+    
+    // Initialize date picker to today if not set
+    if (!dateInput.value) {
+        const today = new Date().toISOString().split('T')[0];
+        dateInput.value = today;
+    }
+    
+    // Function to calculate time window
+    function calculateTimeWindow() {
+        const date = dateInput.value;
+        const monitoringType = typeSelect.value;
+        
+        if (!date || !monitoringType) {
+            return;
+        }
+        
+        // Parse the date
+        const selectedDate = new Date(date);
+        const isMonday = selectedDate.getDay() === 1; // 0 = Sunday, 1 = Monday
+        
+        // Calculate time window based on monitoring type and day
+        let startTime, endTime, startDate, endDate, duration;
+        
+        if (monitoringType === 'EM') { // Early Morning
+            if (isMonday) {
+                // Monday EM: Saturday 5:00 PM to Monday 7:00 AM (38h)
+                startDate = new Date(selectedDate);
+                startDate.setDate(startDate.getDate() - 2); // Go back to Saturday
+                startDate.setHours(17, 0, 0, 0); // 5:00 PM
+                
+                endDate = new Date(selectedDate);
+                endDate.setHours(7, 0, 0, 0); // 7:00 AM
+                
+                duration = 38;
+            } else {
+                // Regular EM: Previous day 5:00 PM to Current day 7:00 AM (14h)
+                startDate = new Date(selectedDate);
+                startDate.setDate(startDate.getDate() - 1); // Previous day
+                startDate.setHours(17, 0, 0, 0); // 5:00 PM
+                
+                endDate = new Date(selectedDate);
+                endDate.setHours(7, 0, 0, 0); // 7:00 AM
+                
+                duration = 14;
+            }
+        } else if (monitoringType === 'DM') { // Daily Monitoring
+            if (isMonday) {
+                // Monday DM: Friday 5:00 PM to Monday 5:00 PM (72h)
+                startDate = new Date(selectedDate);
+                startDate.setDate(startDate.getDate() - 3); // Go back to Friday
+                startDate.setHours(17, 0, 0, 0); // 5:00 PM
+                
+                endDate = new Date(selectedDate);
+                endDate.setHours(17, 0, 0, 0); // 5:00 PM
+                
+                duration = 72;
+            } else {
+                // Regular DM: Previous day 5:00 PM to Current day 5:00 PM (24h)
+                startDate = new Date(selectedDate);
+                startDate.setDate(startDate.getDate() - 1); // Previous day
+                startDate.setHours(17, 0, 0, 0); // 5:00 PM
+                
+                endDate = new Date(selectedDate);
+                endDate.setHours(17, 0, 0, 0); // 5:00 PM
+                
+                duration = 24;
+            }
+        }
+        
+        // Update preview
+        document.getElementById('startTimePreview').textContent = 
+            formatTime(startDate);
+        document.getElementById('endTimePreview').textContent = 
+            formatTime(endDate);
+        document.getElementById('startDatePreview').textContent = 
+            formatDate(startDate);
+        document.getElementById('endDatePreview').textContent = 
+            formatDate(endDate);
+        document.getElementById('durationPreview').textContent = 
+            `Duration: ${duration} hours`;
+        
+        // Show/hide warnings
+        const extendedWarning = document.getElementById('extendedWarning');
+        const mondayWarning = document.getElementById('mondayWarning');
+        
+        if (isMonday && duration > 24) {
+            extendedWarning.classList.remove('d-none');
+        } else {
+            extendedWarning.classList.add('d-none');
+        }
+        
+        if (isMonday) {
+            mondayWarning.classList.remove('d-none');
+        } else {
+            mondayWarning.classList.add('d-none');
+        }
+        
+        // Check for conflicts
+        checkForConflicts(date, monitoringType, analystSelect.value);
+    }
+    
+    // Helper function to format time
+    function formatTime(date) {
+        return date.toLocaleTimeString('en-US', { 
+            hour: 'numeric', 
+            minute: '2-digit',
+            hour12: true 
+        });
+    }
+    
+    // Helper function to format date
+    function formatDate(date) {
+        return date.toLocaleDateString('en-US', { 
+            month: 'short', 
+            day: 'numeric',
+            year: 'numeric'
+        });
+    }
+    
+    // Function to check for scheduling conflicts
+    function checkForConflicts(date, monitoringType, analystId) {
+        if (!date || !monitoringType || !analystId) {
+            return;
+        }
+        
+        // This would typically make an AJAX call to check for conflicts
+        // For now, we'll just demonstrate the concept
+        const conflictAlert = document.getElementById('conflictAlert');
+        const conflictMessage = document.getElementById('conflictMessage');
+        
+        // Simulate conflict check (in real implementation, this would be an AJAX call)
+        setTimeout(() => {
+            // For demonstration, randomly show conflicts
+            const hasConflict = Math.random() > 0.7;
+            
+            if (hasConflict) {
+                conflictMessage.textContent = 
+                    `Warning: Analyst may already have an assignment on ${date}. ` +
+                    `Please verify schedule before saving.`;
+                conflictAlert.classList.remove('d-none');
+            } else {
+                conflictAlert.classList.add('d-none');
+            }
+        }, 500);
+    }
+    
+    // Event listeners
+    dateInput.addEventListener('change', calculateTimeWindow);
+    typeSelect.addEventListener('change', calculateTimeWindow);
+    analystSelect.addEventListener('change', function() {
+        calculateTimeWindow();
+    });
+    
+    // Initial calculation
+    calculateTimeWindow();
+    
+    // Save and Add Another functionality
+    const saveAndAddAnotherBtn = document.getElementById('saveAndAddAnother');
+    if (saveAndAddAnotherBtn) {
+        saveAndAddAnotherBtn.addEventListener('click', function() {
+            // Add a hidden field to indicate "save and add another"
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'save_and_add_another';
+            hiddenInput.value = 'true';
+            document.getElementById('assignmentForm').appendChild(hiddenInput);
+            
+            // Submit the form
+            document.getElementById('assignmentForm').submit();
+        });
+    }
+});
+</script>
+{% endblock %}
